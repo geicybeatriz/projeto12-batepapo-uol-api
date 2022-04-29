@@ -22,7 +22,7 @@ promise.catch((erro) => console.log(erro));
 //participantes
 app.post("/participants", (req, res) => {
     const sendUser = {...req.body, lastStatus: Date.now()};
-    
+
     //validação   
     const participantsSchema = Joi.object({
         name: Joi.string().min(1).required()
@@ -30,6 +30,7 @@ app.post("/participants", (req, res) => {
     const validation = participantsSchema.validate(req.body);
     if(validation.error){
         res.sendStatus(422);
+        return;
     }
 
     //inserindo os usuarios
