@@ -72,6 +72,7 @@ app.get("/participants", async (req, res) => {
 //mensagens
 app.post("/messages", async (req, res) => {
     const {to, text, type} = req.body;
+    console.log("body", req.body);
     const {user} = req.headers;
     const validMessage = {
         from: user,
@@ -86,7 +87,7 @@ app.post("/messages", async (req, res) => {
     }
     
     //verificando tipo de mensagem, se é privada ou pública:
-    if(type !== "message" || type !== "private_message"){
+    if(type !== "message" && type !== "private_message"){
         res.sendStatus(422);
         return;
     }
@@ -96,7 +97,7 @@ app.post("/messages", async (req, res) => {
         const namesList = await db.collection("participants").find({}).toArray();
         console.log("nomes", namesList);
         for(let i = 0; i < namesList.length; i++){
-            if(user !== namesList[i].name){
+            if(user !== namesList[i].name || to !== namesList[i].name || to !== 'Todos'){
                 res.status(422).send("O usuário não está mais na lista de participantes");
                 return;
             }
@@ -118,6 +119,9 @@ app.post("/messages", async (req, res) => {
 
 //enviando mensagens para o front-end 
 app.get("/messages", async (req, res) => {
+    const limit = parseInt(req.query.limit);
+	const hashtag = req.query.hashtag;
+
     try{
         const messagesList =  await db.collection("messages").find().toArray();
         res.send(messagesList);
@@ -138,8 +142,8 @@ app.post("/status", async (req, res) =>{
             }
         }
         //atualizando o lastStatus 
-        await db.collection("participants").updateOne({name: user}, { $set: Date.now() });
-		res.sendStatus(200)
+        await db.collection("participants").updateOne({name: user}, { $set: {lastStatus:Date.now()}});
+		res.status(200).send("novo status");
 
     } catch (error){
         console.log("erro", error);
@@ -147,9 +151,31 @@ app.post("/status", async (req, res) =>{
     }
 })
 
+//set interval
+
+setInterval( async () => {
+    try{
+        const userList = await db.collection("participants").find({}).toArray();
+        for(let i = 0; i < userList.length; i++){
+            if((Date.now() - userList[i].lastStatus ) > 10000){
+                await db.collection("participants").deleteOne({_id: userList[i]._id});
+                await db.collection("messages").insertOne({
+                    from: userList[i].name,
+                    to: 'Todos',
+                    text: 'sai da sala...',
+                    type: 'status',
+                    time: dayjs().format("HH:mm:ss")
+                })
+            }
+        }
+    }catch (error){
+        console.log("erro no setInterval", error);
+    }
+}, 15000)
+
+
 //falta:
 //verificar se esta atualizando o status;
-//remover os usuários com o set interval
 //verificar se as mensagens estão sendo carregadas da forma correta e o query string na url
 
 
