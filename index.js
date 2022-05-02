@@ -127,6 +127,30 @@ app.get("/messages", async (req, res) => {
     }
 })
 
+app.post("/status", async (req, res) =>{
+    const {user} = req.headers;
+    try{
+        const namesList = await db.collection("participants").find({}).toArray();
+        for(let i = 0; i < namesList.length; i++){
+            if(user !== namesList[i].name){
+                res.status(404).send("O usuário não encontrado!");
+                return;
+            }
+        }
+        //atualizando o lastStatus 
+        await db.collection("participants").updateOne({name: user}, { $set: Date.now() });
+		res.sendStatus(200)
+
+    } catch (error){
+        console.log("erro", error);
+        res.sendStatus(500);
+    }
+})
+
+//falta:
+//verificar se esta atualizando o status;
+//remover os usuários com o set interval
+//verificar se as mensagens estão sendo carregadas da forma correta e o query string na url
 
 
 app.listen(5000, () => console.log(chalk.bold.green("Servidor em pé na porta 5000")));
